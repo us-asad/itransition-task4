@@ -18,11 +18,17 @@ export default function TableTR({ user, i, checked, onCheckboxChange, setUsers, 
       status: user.status
     }
   });
+  console.log(user);
   const [loading, setLoading] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
   const router = useRouter();
 
   const save = async (data) => {
+    if (isLoggedUser) {
+      const sureToDeactivateOwn = confirm("Are you sure to deactivate YOURSELF!");
+      if (!sureToDeactivateOwn) return setEdit(false);
+    }
+
     setEdit(false);
     setLoading(true);
     if (edit) {
@@ -32,6 +38,8 @@ export default function TableTR({ user, i, checked, onCheckboxChange, setUsers, 
             Authorization: `Bearer ${getCookie("token")}`
           }
         });
+        setUsers(prev => prev.map(usr => usr.email === user.email ? { ...usr, ...data } : usr))
+        toast.success("Successfully updated!");
         if (isLoggedUser) {
           deleteCookie("token");
           deleteCookie("email")
@@ -115,7 +123,7 @@ export default function TableTR({ user, i, checked, onCheckboxChange, setUsers, 
             </select>
             {errors.status?.message ? <span className='text-[14px] text-red-600'>{errors.status?.message}</span> : null}
           </label>
-        ) : watch("status")}
+        ) : user.status}
       </td>
       <td className={`flex gap-4 items-center h-[50px] text-[16px] ${tdClassName}`}>
         <div className="text-green-600 hover:opacity-70 duration-100">

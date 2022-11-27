@@ -4,15 +4,18 @@ import { FiLogOut } from "react-icons/fi";
 import { TableTR } from 'components';
 import { deleteCookie, getCookie } from 'cookies-next';
 import { useRouter } from 'next/router';
-import { SubmitBtn } from 'subcomponents';
+import { Spinner, SubmitBtn } from 'subcomponents';
 import axios from 'axios';
 import { toast } from 'react-toastify';
+import { FcLock, FcUnlock } from "react-icons/fc";
 
 export default function Home({ users: usersJSON }) {
   const [users, setUsers] = useState(JSON.parse(usersJSON) || []);
   const [checkedUsers, setCheckedUsers] = useState([]);
   const router = useRouter();
   const [deleteLoading, setDeleteLoading] = useState(false);
+  const [activateLoading, setActivateLoading] = useState(false);
+  const [deactivateLoading, setDeactivateLoading] = useState(false);
 
   const logout = () => {
     deleteCookie("token");
@@ -33,6 +36,11 @@ export default function Home({ users: usersJSON }) {
   }
 
   const deleteSelected = async () => {
+    if (checkedUsers.includes(getCookie("email"))) {
+      const sureToDeleteOwn = confirm("Are you sure to delete also YOURSELF ?")
+      if (!sureToDeleteOwn) return;
+    }
+
     setDeleteLoading(true);
 
     try {
@@ -60,6 +68,46 @@ export default function Home({ users: usersJSON }) {
     setDeleteLoading(false);
   }
 
+  const changeSelectedStatus = status => {
+    if (status) setActivateLoading(true);
+    else setDeactivateLoading(true);
+
+    if (checkedUsers.includes(getCookie("email")) && !status) {
+      const sureToDeactivateOwn = confirm("Are you sure to deactivate YOURSELF!");
+      if (!sureToDeactivateOwn) {
+        setActivateLoading(false);
+        setDeactivateLoading(false);
+        return;
+      }
+    }
+
+    try {
+      checkedUsers.forEach(async email => {
+        await axios.put(`${process.env.NEXT_PUBLIC_URL}/api/update/${email}`, { status: status ? "active" : "blocked" }, {
+          headers: {
+            Authorization: `Bearer ${getCookie("token")}`
+          }
+        });
+      })
+      setUsers(prev => prev.map(usr => checkedUsers.includes(usr.email) ? {...usr, status: status ? "active" : "block"} : usr));
+      if (checkedUsers.includes(getCookie("email")) && !status) {
+        deleteCookie("email");
+        deleteCookie("token");
+        setCheckedUsers([]);
+        if (status) setActivateLoading(false);
+        else setDeactivateLoading(false);
+        router.push("/auth");
+      }
+      toast.success("Successfully updated!");
+    } catch (ex) {
+      console.error(ex);
+      toast.error(ex?.response?.data?.message || "Server Error!")
+    }
+
+    if (status) setActivateLoading(false);
+    else setDeactivateLoading(false);
+  }
+
   return (
     <div className='custom-container py-5'>
       <div className="flex justify-center">
@@ -68,17 +116,29 @@ export default function Home({ users: usersJSON }) {
           <FiLogOut />
         </button>
       </div>
-      <div className="flex items-center">
+      <div className={`flex gap-2 ${!checkedUsers.length ? "opacity-50 pointer-events-none" : ""}`}>
         <SubmitBtn
           onClick={deleteSelected}
           text="Delete"
-          className="!w-max px-5 py-1.5 bg-red-600"
-          disabled={!checkedUsers.length}
+          className="!w-max !px-5 !py-1.5 bg-red-600"
           loading={deleteLoading}
           loadingText="Deleting"
           loadingClassName="!border-red-300 !border-l-red-900 !w-[17px] !h-[17px]"
         />
-
+        <button
+          disabled={activateLoading}
+          className='px-3 bg-gray-300 py-2 rounded-md text-[20px] w-[44px]'
+          onClick={() => changeSelectedStatus(false)}
+        >
+          {activateLoading ? <Spinner className="!w-[17px] !h-[17px] !border-l-gray-700" /> : <FcLock />}
+        </button>
+        <button
+          disabled={deactivateLoading}
+          className='px-3 bg-green-300 py-2 rounded-md text-[20px] w-[44px]'
+          onClick={() => changeSelectedStatus(true)}
+        >
+          {deactivateLoading ? <Spinner className="!w-[17px] !h-[17px] !border-l-green-700" /> : <FcUnlock />}
+        </button>
       </div>
       <table className='w-full mt-10 table-auto text-start'>
         <thead className='border-b p-1'>
