@@ -178,7 +178,10 @@ export default function Home({ users: usersJSON }) {
 const thClassName = "pb-2 font-medium text-start pr-4"
 
 export async function getServerSideProps() {
+  console.log("started");
   const users = await User.find();
+  console.log("here we go ", users);
+
   users?.reverse();
   return {
     props: {
