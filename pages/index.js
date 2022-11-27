@@ -8,6 +8,7 @@ import { Spinner, SubmitBtn } from 'subcomponents';
 import axios from 'axios';
 import { toast } from 'react-toastify';
 import { FcLock, FcUnlock } from "react-icons/fc";
+import db from 'utils/db';
 
 export default function Home({ users: usersJSON }) {
   const [users, setUsers] = useState(JSON.parse(usersJSON) || []);
@@ -179,6 +180,7 @@ const thClassName = "pb-2 font-medium text-start pr-4"
 
 export async function getServerSideProps() {
   console.log("started");
+  db.connect();
   const users = await User.find();
   console.log("here we go ", users);
 
